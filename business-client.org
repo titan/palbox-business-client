@@ -1,7 +1,7 @@
 * 程序框架
 
 #+begin_src nim :exports code :noweb yes :mkdirp yes :tangle /dev/shm/business-client/src/business_client.nim
-  import asyncdispatch, asyncnet, base64, httpclient, json, logging, md5, nativesockets, posix, redis, sequtils, strfmt, strutils, tables, times
+  import asyncdispatch, httpclient, json, logging, md5, posix, redis, sequtils, strfmt, strutils, times
 
   proc generate_pin(board: int, lock: int, cmd: int): int =
     result = (cast[int](cast[int64](epochTime().toInt() shr 2) mod 64) or (board shl 13) or (lock shl 8) or (cmd shl 6)) and 0xFFFF
@@ -13,7 +13,7 @@
     while true:
       let taskstr = await redis_client.rpop(taskkey)
       if taskstr == redisNil:
-        await sleepAsync(1000)
+        discard posix.sleep(1)
       else:
         let task = try: parseJson(taskstr) except: nil
         if task != nil:
@@ -84,6 +84,8 @@
                 discard await redis_client.exec()
 
   proc serve() =
+    var L = newConsoleLogger(fmtStr = "$levelid [$datetime] : ")
+    addHandler(L)
     asyncCheck checking()
     run_forever()
 
